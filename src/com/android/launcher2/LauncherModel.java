@@ -924,15 +924,16 @@ public class LauncherModel extends BroadcastReceiver {
                     return false;
                 }
 
+                int screenCount = Launcher.getScreenCount(mContext.getContentResolver());
                 // We use the last index to refer to the hotseat and the screen as the rank, so
                 // test and update the occupied state accordingly
-                if (occupied[Launcher.SCREEN_COUNT][item.screen][0] != null) {
+                if (occupied[screenCount][item.screen][0] != null) {
                     Log.e(TAG, "Error loading shortcut into hotseat " + item
                         + " into position (" + item.screen + ":" + item.cellX + "," + item.cellY
-                        + ") occupied by " + occupied[Launcher.SCREEN_COUNT][item.screen][0]);
+                        + ") occupied by " + occupied[screenCount][item.screen][0]);
                     return false;
                 } else {
-                    occupied[Launcher.SCREEN_COUNT][item.screen][0] = item;
+                    occupied[screenCount][item.screen][0] = item;
                     return true;
                 }
             } else if (item.container != LauncherSettings.Favorites.CONTAINER_DESKTOP) {
@@ -982,11 +983,13 @@ public class LauncherModel extends BroadcastReceiver {
             final Cursor c = contentResolver.query(
                     LauncherSettings.Favorites.CONTENT_URI, null, null, null, null);
 
+            final int screenCount = Launcher.getScreenCount(contentResolver);
+            
             // +1 for the hotseat (it can be larger than the workspace)
             // Load workspace in reverse order to ensure that latest items are loaded first (and
             // before any earlier duplicates)
             final ItemInfo occupied[][][] =
-                    new ItemInfo[Launcher.SCREEN_COUNT + 1][mCellCountX + 1][mCellCountY + 1];
+                    new ItemInfo[screenCount + 1][mCellCountX + 1][mCellCountY + 1];
 
             try {
                 final int idIndex = c.getColumnIndexOrThrow(LauncherSettings.Favorites._ID);
@@ -1194,7 +1197,7 @@ public class LauncherModel extends BroadcastReceiver {
                 Log.d(TAG, "workspace layout: ");
                 for (int y = 0; y < mCellCountY; y++) {
                     String line = "";
-                    for (int s = 0; s < Launcher.SCREEN_COUNT; s++) {
+                    for (int s = 0; s < screenCount; s++) {
                         if (s > 0) {
                             line += " | ";
                         }
