@@ -32,10 +32,12 @@ import android.appwidget.AppWidgetProviderInfo;
 import android.content.ClipData;
 import android.content.ClipDescription;
 import android.content.ComponentName;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
+import android.database.ContentObserver;
 import android.graphics.Bitmap;
 import android.graphics.Camera;
 import android.graphics.Canvas;
@@ -47,14 +49,17 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Region.Op;
 import android.graphics.drawable.Drawable;
+import android.os.Handler;
 import android.os.IBinder;
 import android.os.Parcelable;
+import android.provider.Settings;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.Pair;
 import android.view.Display;
 import android.view.DragEvent;
+import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
@@ -236,6 +241,30 @@ public class Workspace extends SmoothPagedView
     private float[] mNewAlphas;
     private float[] mNewRotationYs;
     private float mTransitionProgress;
+    
+    private int mDefaultPageAttValue = -1;
+    
+    class SettingsObserver extends ContentObserver {
+    	
+    	public SettingsObserver() {
+    		this(new Handler());
+    	}
+
+		public SettingsObserver(Handler handler) {
+			super(handler);
+		}
+    	
+		void observe(ContentResolver cr) {
+			cr.registerContentObserver(Settings.System.getUriFor(Settings.System.LAUNCHER_SCREEN_COUNT),
+					false,
+					this);
+		}
+		
+		@Override
+		public void onChange(boolean selfChange) {
+			updateChildren();
+		}
+    }
 
     /**
      * Used to inflate the Workspace from XML.
@@ -302,14 +331,18 @@ public class Workspace extends SmoothPagedView
         // if the value is manually specified, use that instead
         cellCountX = a.getInt(R.styleable.Workspace_cellCountX, cellCountX);
         cellCountY = a.getInt(R.styleable.Workspace_cellCountY, cellCountY);
-        mDefaultPage = a.getInt(R.styleable.Workspace_defaultScreen, 1);
+        mDefaultPageAttValue = a.getInt(R.styleable.Workspace_defaultScreen, -1);
         a.recycle();
+        
+        mLauncher = (Launcher) context;
+        updateChildren();
 
         LauncherModel.updateWorkspaceLayoutCells(cellCountX, cellCountY);
         setHapticFeedbackEnabled(false);
 
-        mLauncher = (Launcher) context;
         initWorkspace();
+        
+        new SettingsObserver().observe(context.getContentResolver());
 
         // Disable multitouch across the workspace/all apps/customize tray
         setMotionEventSplittingEnabled(true);
@@ -373,12 +406,55 @@ public class Workspace extends SmoothPagedView
         updateChildrenLayersEnabled();
         mLauncher.unlockScreenOrientationOnLargeUI();
     }
+    
+    private void updateChildren() {
+    	Context context = getContext();
+    	
+    	if (mDefaultPageAttValue >= 0)
+    		updateChildren(mDefaultPageAttValue);
+    	else
+    		updateChildren(Launcher.getDefaultScreen(context.getContentResolver()));
+    }
+    
+    /**
+     * Removes any extra child screens and adds any needed
+     */
+    private void updateChildren(int defaultPage) {
+    	Context context = getContext();
+    	mDefaultPage = defaultPage;
+    	
+        LayoutInflater li = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        
+        int childCount = getChildCount();
+        int desiredCount = Launcher.getScreenCount(context.getContentResolver());
+        View[] remove = new View[childCount > desiredCount ? childCount - desiredCount : 0];
+        int removeIndex = 0;
+        
+        //loop over, removing if we get passed the desired count
+        // and adding if we're passed the child count
+        for (int i = 0; i < Math.max(childCount, desiredCount); i++) {
+        	//there isn't a child and should be
+        	if (i >= childCount) {
+            	View child = li.inflate(R.layout.workspace_screen, null);
+            	addView(child);
+        	} else if (i >= desiredCount) {
+        		remove[removeIndex] = getChildAt(i);
+        		removeIndex++;
+        	}
+        }
+        
+        for (int i = 0; i < remove.length; i++)
+        	removeView(remove[i]);
+
+    	setOnLongClickListener(mLauncher);
+    }
 
     /**
      * Initializes various states for this workspace.
      */
     protected void initWorkspace() {
         Context context = getContext();
+        
         mCurrentPage = mDefaultPage;
         Launcher.setScreen(mCurrentPage);
         LauncherApplication app = (LauncherApplication)context.getApplicationContext();
@@ -547,7 +623,7 @@ public class Workspace extends SmoothPagedView
 
         if (!(child instanceof Folder)) {
             child.setHapticFeedbackEnabled(false);
-            child.setOnLongClickListener(mLongClickListener);
+            child.setOnLongClickListener(mLauncher);
         }
         if (child instanceof DropTarget) {
             mDragController.addDropTarget((DropTarget) child);

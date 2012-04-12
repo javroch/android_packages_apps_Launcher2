@@ -132,9 +132,6 @@ public final class Launcher extends Activity
 
     static final String EXTRA_SHORTCUT_DUPLICATE = "duplicate";
 
-    static final int SCREEN_COUNT = 5;
-    static final int DEFAULT_SCREEN = 2;
-
     static final int DIALOG_CREATE_SHORTCUT = 1;
     static final int DIALOG_RENAME_FOLDER = 2;
 
@@ -172,7 +169,7 @@ public final class Launcher extends Activity
     private static final int DISMISS_CLING_DURATION = 250;
 
     private static final Object sLock = new Object();
-    private static int sScreen = DEFAULT_SCREEN;
+    private static int sScreen = 0;
 
     private final BroadcastReceiver mCloseSystemDialogsReceiver
             = new CloseSystemDialogsIntentReceiver();
@@ -269,11 +266,25 @@ public final class Launcher extends Activity
         int cellX;
         int cellY;
     }
+    
+    public static int getScreenCount(ContentResolver cr) {
+    	return Settings.System.getInt(cr,
+    			Settings.System.LAUNCHER_SCREEN_COUNT,
+    			5);
+    }
+    
+    public static int getDefaultScreen(ContentResolver cr) {
+    	return (getScreenCount(cr) / 2);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
         LauncherApplication app = ((LauncherApplication)getApplication());
+        
+        setScreen(getDefaultScreen(app.getContentResolver()));
+        
         mModel = app.setLauncher(this);
         mIconCache = app.getIconCache();
         mDragController = new DragController(this);
@@ -768,7 +779,6 @@ public final class Launcher extends Activity
 
         // Setup the workspace
         mWorkspace.setHapticFeedbackEnabled(false);
-        mWorkspace.setOnLongClickListener(this);
         mWorkspace.setup(dragController);
         dragController.addDragListener(mWorkspace);
 
@@ -2901,7 +2911,7 @@ public final class Launcher extends Activity
         if (mWorkspace != null) {
             return mWorkspace.getCurrentPage();
         } else {
-            return SCREEN_COUNT / 2;
+            return getDefaultScreen(getContentResolver());
         }
     }
 
