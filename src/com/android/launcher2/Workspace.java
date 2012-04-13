@@ -335,9 +335,10 @@ public class Workspace extends SmoothPagedView
         a.recycle();
         
         mLauncher = (Launcher) context;
-        updateChildren();
-
         LauncherModel.updateWorkspaceLayoutCells(cellCountX, cellCountY);
+        
+        updateChildren(); //so the new ones get the right counts
+        
         setHapticFeedbackEnabled(false);
 
         initWorkspace();
@@ -445,8 +446,6 @@ public class Workspace extends SmoothPagedView
         
         for (int i = 0; i < remove.length; i++)
         	removeView(remove[i]);
-
-    	setOnLongClickListener(mLauncher);
     }
 
     /**
@@ -508,6 +507,7 @@ public class Workspace extends SmoothPagedView
         CellLayout cl = ((CellLayout) child);
         cl.setOnInterceptTouchListener(this);
         cl.setClickable(true);
+        cl.setOnLongClickListener(mLongClickListener);
         cl.enableHardwareLayers();
     }
 

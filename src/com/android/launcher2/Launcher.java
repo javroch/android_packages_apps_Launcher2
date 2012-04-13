@@ -779,6 +779,7 @@ public final class Launcher extends Activity
 
         // Setup the workspace
         mWorkspace.setHapticFeedbackEnabled(false);
+        mWorkspace.setOnLongClickListener(this);
         mWorkspace.setup(dragController);
         dragController.addDragListener(mWorkspace);
 
