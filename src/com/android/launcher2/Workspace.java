@@ -428,12 +428,20 @@ public class Workspace extends SmoothPagedView
         
         int childCount = getChildCount();
         int desiredCount = Launcher.getScreenCount(context.getContentResolver());
+
+        //if they've lowered the number of home screens
+        // and were sitting on a screen that will now be out of bounds
+        // move them to the default screen
+    	if (getCurrentPage() >= desiredCount) {
+    		snapToPage(mDefaultPage);
+    	}
+        
         View[] remove = new View[childCount > desiredCount ? childCount - desiredCount : 0];
         int removeIndex = 0;
         
         //loop over, removing if we get passed the desired count
         // and adding if we're passed the child count
-        for (int i = 0; i < Math.max(childCount, desiredCount); i++) {
+        for (int i = Math.min(childCount, desiredCount); i < Math.max(childCount, desiredCount); i++) {
         	//there isn't a child and should be
         	if (i >= childCount) {
             	View child = li.inflate(R.layout.workspace_screen, null);
