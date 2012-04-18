@@ -266,14 +266,25 @@ public class Workspace extends SmoothPagedView
 		
 		@Override
 		public void onChange(boolean selfChange) {
-			for (int i = 0; i < mLauncher.getModel().sWorkspaceItems.size(); i++) {
-				ItemInfo item = mLauncher.getModel().sWorkspaceItems.get(i);
+			deleteLeftoverWorkspaceItems();
+			
+			mLauncher.reload();
+		}
+		
+		private void deleteLeftovers(ArrayList<ItemInfo> items) {
+			for (int i = 0; i < items.size(); i++) {
+				ItemInfo item = items.get(i);
 				if (item.screen >= Launcher.getScreenCount(mLauncher.getContentResolver())) {
 					DeleteDropTarget.deleteItem(item, mWorkspace, mLauncher);
 				}
 			}
+		}
+
+		private void deleteLeftoverWorkspaceItems() {
+			LauncherModel m = mLauncher.getModel();
 			
-			mLauncher.reload();
+			deleteLeftovers(m.sWorkspaceItems);
+			deleteLeftovers(new ArrayList<ItemInfo>(m.sAppWidgets));
 		}
     }
 
