@@ -80,23 +80,35 @@ public class DeleteDropTarget extends ButtonDropTarget {
         }
     }
 
-    private boolean isAllAppsApplication(DragSource source, Object info) {
+    private static boolean isAllAppsApplication(DragSource source, Object info) {
         return (source instanceof AppsCustomizePagedView) && (info instanceof ApplicationInfo);
     }
     private boolean isAllAppsWidget(DragSource source, Object info) {
         return (source instanceof AppsCustomizePagedView) && (info instanceof PendingAddWidgetInfo);
     }
+    private static boolean isDragSourceWorkspaceOrFolder(DragSource dragSource) {
+    	return (dragSource instanceof Workspace) || (dragSource instanceof Folder);
+    }
     private boolean isDragSourceWorkspaceOrFolder(DragObject d) {
-        return (d.dragSource instanceof Workspace) || (d.dragSource instanceof Folder);
+        return isDragSourceWorkspaceOrFolder(d.dragSource);
+    }
+    private static boolean isWorkspaceOrFolderApplication(DragSource dragSource, Object dragInfo) {
+    	return isDragSourceWorkspaceOrFolder(dragSource) && (dragInfo instanceof ShortcutInfo);
     }
     private boolean isWorkspaceOrFolderApplication(DragObject d) {
-        return isDragSourceWorkspaceOrFolder(d) && (d.dragInfo instanceof ShortcutInfo);
+        return isWorkspaceOrFolderApplication(d.dragSource, d.dragInfo);
+    }
+    private static boolean isWorkspaceOrFolderWidget(DragSource dragSource, Object dragInfo) {
+    	return isDragSourceWorkspaceOrFolder(dragSource) && (dragInfo instanceof LauncherAppWidgetInfo);
     }
     private boolean isWorkspaceOrFolderWidget(DragObject d) {
-        return isDragSourceWorkspaceOrFolder(d) && (d.dragInfo instanceof LauncherAppWidgetInfo);
+    	return isWorkspaceOrFolderWidget(d.dragSource, d.dragInfo);
+    }
+    private static boolean isWorkspaceFolder(DragSource dragSource, Object dragInfo) {
+        return (dragSource instanceof Workspace) && (dragInfo instanceof FolderInfo);
     }
     private boolean isWorkspaceFolder(DragObject d) {
-        return (d.dragSource instanceof Workspace) && (d.dragInfo instanceof FolderInfo);
+    	return isWorkspaceFolder(d.dragSource, d.dragInfo);
     }
 
     @Override
@@ -195,27 +207,25 @@ public class DeleteDropTarget extends ButtonDropTarget {
                 DELETE_ANIMATION_DURATION, new DecelerateInterpolator(2),
                 new DecelerateInterpolator(1.5f), onAnimationEndRunnable, false);
     }
-
-    private void completeDrop(DragObject d) {
-        ItemInfo item = (ItemInfo) d.dragInfo;
-
-        if (isAllAppsApplication(d.dragSource, item)) {
+    
+    public static void deleteItem(ItemInfo item, DragSource dragSource, Launcher launcher) {
+        if (isAllAppsApplication(dragSource, item)) {
             // Uninstall the application if it is being dragged from AppsCustomize
-            mLauncher.startApplicationUninstallActivity((ApplicationInfo) item);
-        } else if (isWorkspaceOrFolderApplication(d)) {
-            LauncherModel.deleteItemFromDatabase(mLauncher, item);
-        } else if (isWorkspaceFolder(d)) {
+            launcher.startApplicationUninstallActivity((ApplicationInfo) item);
+        } else if (isWorkspaceOrFolderApplication(dragSource, item)) {
+            LauncherModel.deleteItemFromDatabase(launcher, item);
+        } else if (isWorkspaceFolder(dragSource, item)) {
             // Remove the folder from the workspace and delete the contents from launcher model
             FolderInfo folderInfo = (FolderInfo) item;
-            mLauncher.removeFolder(folderInfo);
-            LauncherModel.deleteFolderContentsFromDatabase(mLauncher, folderInfo);
-        } else if (isWorkspaceOrFolderWidget(d)) {
+            launcher.removeFolder(folderInfo);
+            LauncherModel.deleteFolderContentsFromDatabase(launcher, folderInfo);
+        } else if (isWorkspaceOrFolderWidget(dragSource, item)) {
             // Remove the widget from the workspace
-            mLauncher.removeAppWidget((LauncherAppWidgetInfo) item);
-            LauncherModel.deleteItemFromDatabase(mLauncher, item);
+            launcher.removeAppWidget((LauncherAppWidgetInfo) item);
+            LauncherModel.deleteItemFromDatabase(launcher, item);
 
             final LauncherAppWidgetInfo launcherAppWidgetInfo = (LauncherAppWidgetInfo) item;
-            final LauncherAppWidgetHost appWidgetHost = mLauncher.getAppWidgetHost();
+            final LauncherAppWidgetHost appWidgetHost = launcher.getAppWidgetHost();
             if (appWidgetHost != null) {
                 // Deleting an app widget ID is a void call but writes to disk before returning
                 // to the caller...
@@ -226,6 +236,12 @@ public class DeleteDropTarget extends ButtonDropTarget {
                 }.start();
             }
         }
+    }
+
+    private void completeDrop(DragObject d) {
+        ItemInfo item = (ItemInfo) d.dragInfo;
+        
+        deleteItem(item, d.dragSource, mLauncher);
     }
 
     public void onDrop(DragObject d) {
