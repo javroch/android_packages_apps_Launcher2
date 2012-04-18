@@ -246,12 +246,16 @@ public class Workspace extends SmoothPagedView
     
     class SettingsObserver extends ContentObserver {
     	
-    	public SettingsObserver() {
-    		this(new Handler());
+    	private Workspace mWorkspace;
+    	
+    	public SettingsObserver(Workspace workspace) {
+    		this(new Handler(), workspace);
     	}
 
-		public SettingsObserver(Handler handler) {
+		public SettingsObserver(Handler handler, Workspace workspace) {
 			super(handler);
+			
+			mWorkspace = workspace;
 		}
     	
 		void observe(ContentResolver cr) {
@@ -262,7 +266,14 @@ public class Workspace extends SmoothPagedView
 		
 		@Override
 		public void onChange(boolean selfChange) {
-			updateChildren();
+			for (int i = 0; i < mLauncher.getModel().sWorkspaceItems.size(); i++) {
+				ItemInfo item = mLauncher.getModel().sWorkspaceItems.get(i);
+				if (item.screen >= Launcher.getScreenCount(mLauncher.getContentResolver())) {
+					DeleteDropTarget.deleteItem(item, mWorkspace, mLauncher);
+				}
+			}
+			
+			mLauncher.reload();
 		}
     }
 
@@ -343,7 +354,7 @@ public class Workspace extends SmoothPagedView
 
         initWorkspace();
         
-        new SettingsObserver().observe(context.getContentResolver());
+        new SettingsObserver(this).observe(context.getContentResolver());
 
         // Disable multitouch across the workspace/all apps/customize tray
         setMotionEventSplittingEnabled(true);

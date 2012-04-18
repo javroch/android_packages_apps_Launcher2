@@ -276,6 +276,12 @@ public final class Launcher extends Activity
     public static int getDefaultScreen(ContentResolver cr) {
     	return (getScreenCount(cr) / 2);
     }
+    
+    public void reload() {
+    	Intent intent = getIntent();
+    	finish();
+    	startActivity(intent);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
